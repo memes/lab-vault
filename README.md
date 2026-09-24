@@ -1,32 +1,210 @@
-# repo-template
+# Vault provisioning
 
-![GitHub release](https://img.shields.io/github/v/release/memes/repo-template?sort=semver)
-![GitHub last commit](https://img.shields.io/github/last-commit/memes/repo-template)
+![GitHub release](https://img.shields.io/github/v/release/memes/lab-vault?sort=semver)
+![GitHub last commit](https://img.shields.io/github/last-commit/memes/lab-vault)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
-This repository contains common settings and actions that I tend to use in my
-demos and projects.
+This folder contains Terraform and Ansible to configure Vault for Accelerated GCP lab. When applied, the Ansible
+playbook in `playbook.yaml` will install and configure Vault on a server, and the Terraform will create resources that
+define the behaviour of Vault, but not actual secrets or tokens.
 
-> NOTE: Unless explicitly stated, this repo is not officially endorsed or supported by F5 Inc (or any prior employer).
-> Feel free to open issues and I'll do my best to respond, but for product support you should go through F5's official
-> channels.
+* &#x2713; Authentication methods
+* &#x2713; Policies
+* &#x2713; AppRoles
+* &#x2717; Certificates (except intermediate)
+* &#x2717; User/service tokens
 
-## Setup
+> NOTE: This script will need to run as a privileged account.
 
-> NOTE: TODOs are sprinkled in the files and can be used to find where changes
-> may be necessary.
+## Unsealing reminder
 
-1. Use as a template when creating a new GitHub repo, or copy the contents into
-   a bare-repo directory.
-2. Update `.pre-commit-config.yml` to add/remove plugins as necessary.
-3. Modify README.md and CONTRIBUTING.md, change LICENSE as needed.
-4. Review GitHub PR and issue templates.
-5. If using `release-please` action, make these changes:
-   1. In GitHub Settings:
-      * _Settings_ > _Actions_ > _General_  > _Allow GitHub Actions to create and approve pull requests_ is checked
-      * _Settings_ > _Secrets and Variables_ > _Actions_, and add `RELEASE_PLEASE_TOKEN` with PAT as a _Repository Secret_
-   2. Modify [release-please action](.github/workflows/release-please.yml) to enable it
-   3. Modify [release-please-config.json](release-please-config.json)] as needed
-   4. Reset [.release-please-manifest.json](.release-please-manifest.json) to an empty file or starting version for package(s).
-6. Remove all [CHANGELOG](CHANGELOG.md) entries.
-7. Commit changes.
+Do this for each key.
+
+```shell
+base64 -d <<EOF | gpg -dq; echo
+UNSEAL KEY 1 HERE
+EOF
+vault operator unseal
+```
+
+## Login
+
+### GSuite
+
+```shell
+vault login -method=oidc
+```
+
+### Root with one-time password
+
+```shell
+./root-otp-login.sh
+```
+
+```text
+Unseal token (leave empty when done): UNSEAL_KEY1
+Unseal token (leave empty when done): UNSEAL_KEY2
+Unseal token (leave empty when done):
+```
+
+## Bootstrapping
+
+1. Install Vault and run with TLS disabled
+
+   ```shell
+   ansible-playbook -Ki inventory playbook.yaml --tags bootstrap
+   ```
+
+1. Initialise Vault
+
+   1. Initialise with GPG using 2 keys as threshold
+
+      ```shell
+      gpg --export SUBKEY1 | base64 > subkey1.asc
+      gpg --export SUBKEY2 | base64 > subkey2.asc
+      export VAULT_ADDR=http://vault.lab.acceleratedgcp.com:8200
+      vault operator init -tls-skip-verify -key-shares=2 -key-threshold=2 -pgp-keys="subkey1.asc,subkey2.asc"
+      rm -f subkey1.asc subkey2.asc
+      ```
+
+   1. Unseal Vault
+
+      ```shell
+      base64 -d <<EOF | gpg -dq; echo
+      FIRST UNSEAL KEY HERE
+      EOF
+      base64 -d <<EOF | gpg -dq; echo
+      SECOND UNSEAL KEY HERE
+      EOF
+      vault operator unseal -tls-skip-verify
+      vault operator unseal -tls-skip-verify
+      ```
+
+   1. Generate OTP for root
+
+      ```shell
+      VAULT_SKIP_VERIFY=true ./root-otp-login.sh UNSEAL_KEY
+      ```
+
+   1. Execute Tofu to provision Vault pki for CA
+
+      ```shell
+      VAULT_SKIP_VERIFY=true tofu init
+      VAULT_SKIP_VERIFY=true tofu apply \
+         -target vault_mount.pki_ca \
+         -auto-approve
+      ```
+
+   1. Load the externally generated CA cert and key bundle
+
+      ```shell
+      vault write -tls-skip-verify pki_ca/config/ca pem_bundle=@path/to/ca_bundle.pem
+      ```
+
+   1. Provision the remaining Vault policies, roles, etc.
+
+      ```shell
+      VAULT_SKIP_VERIFY=true tofu apply -auto-approve
+      ```
+
+1. Enable TLS for Vault
+
+   1. Regenerate Vault certificate
+
+      ```shell
+      make -C ../certs clean vault.lab.acceleratedgcp.com.pem
+      ```
+
+   1. Revoke current root OTP token
+
+      ```shell
+         vault token lookup -tls-skip-verify
+         vault token revoke -tls-skip-verify OTP_ROOT_TOKEN
+      ```
+
+   1. Rotate the Vault certificate and restart service
+
+      > NOTE: If executing in devcontainer and the GPG/SSH agent isn't forwarding correctly, add `-k` flag to prompt for
+      > SSH password.
+
+      ```shell
+      uv run ansible-playbook -Ki ./inventory playbook.yaml
+      ```
+
+   1. Launch a new shell or reset VAULT_ADDR environment to use TLS
+
+      ```shell
+      export VAULT_ADDR=https://vault.lab.acceleratedgcp.com:8200
+      ```
+
+   Vault should now be running with TLS certs generated by Vault itself; at this point it can be unsealed, and used with
+   OIDC tokens.
+
+<!-- markdownlint-disable MD033 MD034 -->
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.3 |
+| <a name="requirement_local"></a> [local](#requirement\_local) | ~> 2.4 |
+| <a name="requirement_vault"></a> [vault](#requirement\_vault) | ~> 3.10 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [vault_approle_auth_backend_role.ipmi-secrets](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/approle_auth_backend_role) | resource |
+| [vault_approle_auth_backend_role.kickstart-secrets](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/approle_auth_backend_role) | resource |
+| [vault_auth_backend.approle](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/auth_backend) | resource |
+| [vault_auth_backend.k8s](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/auth_backend) | resource |
+| [vault_identity_group.admins](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/identity_group) | resource |
+| [vault_identity_group_alias.admins_alias](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/identity_group_alias) | resource |
+| [vault_jwt_auth_backend.oidc](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/jwt_auth_backend) | resource |
+| [vault_jwt_auth_backend_role.domain_user](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/jwt_auth_backend_role) | resource |
+| [vault_jwt_auth_backend_role.k8s_default](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/jwt_auth_backend_role) | resource |
+| [vault_mount.pki](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) | resource |
+| [vault_mount.pki_ca](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) | resource |
+| [vault_mount.secret](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount) | resource |
+| [vault_pki_secret_backend_config_issuers.intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_config_issuers) | resource |
+| [vault_pki_secret_backend_config_urls.pki](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_config_urls) | resource |
+| [vault_pki_secret_backend_config_urls.pki_ca](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_config_urls) | resource |
+| [vault_pki_secret_backend_intermediate_cert_request.intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_intermediate_cert_request) | resource |
+| [vault_pki_secret_backend_intermediate_set_signed.intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_intermediate_set_signed) | resource |
+| [vault_pki_secret_backend_issuer.intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_issuer) | resource |
+| [vault_pki_secret_backend_role.person](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role) | resource |
+| [vault_pki_secret_backend_role.server](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role) | resource |
+| [vault_pki_secret_backend_role.server_2048](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role) | resource |
+| [vault_pki_secret_backend_root_sign_intermediate.intermediate](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_root_sign_intermediate) | resource |
+| [vault_policy.admin](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.audit](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.ipmi-secrets](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.k8s_default](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.kickstart-secrets](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.kickstart-secrets-roleid](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.kickstart-secrets-secretid](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+| [vault_policy.update-token](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/policy) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_bound_cidrs"></a> [bound\_cidrs](#input\_bound\_cidrs) | A list of CIDRs that will be permitted to access tokens and secrets. | `list(string)` | n/a | yes |
+| <a name="input_gsuite_admin_group"></a> [gsuite\_admin\_group](#input\_gsuite\_admin\_group) | GSuite group that will be granted Vault admin role on authentication. | `string` | n/a | yes |
+| <a name="input_gsuite_admin_impersonate_account"></a> [gsuite\_admin\_impersonate\_account](#input\_gsuite\_admin\_impersonate\_account) | The GSuite administrative user account that will be impersonated for API calls. | `string` | n/a | yes |
+| <a name="input_gsuite_client_id"></a> [gsuite\_client\_id](#input\_gsuite\_client\_id) | The GSuite OIDC client id. | `string` | n/a | yes |
+| <a name="input_gsuite_client_secret"></a> [gsuite\_client\_secret](#input\_gsuite\_client\_secret) | The GSuite OIDC client secret. | `string` | n/a | yes |
+| <a name="input_gsuite_service_account_cred_path"></a> [gsuite\_service\_account\_cred\_path](#input\_gsuite\_service\_account\_cred\_path) | The path to the JSON credentials for a GCP service account with access to GSuite user data. | `string` | n/a | yes |
+| <a name="input_person_domains"></a> [person\_domains](#input\_person\_domains) | The list of domains that will be permitted for person (VPN) CSRs. | `list(string)` | <pre>[<br/>  "home.arpa",<br/>  "lab.acceleratedgcp.com"<br/>]</pre> | no |
+| <a name="input_server_2048_domains"></a> [server\_2048\_domains](#input\_server\_2048\_domains) | The list of domains that will be permitted for server CSRs that must be restricted to 2048 bits (iDRAC). | `list(string)` | <pre>[<br/>  "lab.acceleratedgcp.com",<br/>  "home.arpa"<br/>]</pre> | no |
+| <a name="input_server_domains"></a> [server\_domains](#input\_server\_domains) | The list of domains that will be permitted for server CSRs. | `list(string)` | <pre>[<br/>  "home.arpa",<br/>  "lab.acceleratedgcp.com"<br/>]</pre> | no |
+
+## Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->
+<!-- markdownlint-enable MD033 MD034 -->

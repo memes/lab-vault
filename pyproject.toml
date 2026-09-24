@@ -1,12 +1,13 @@
 [project]
-# TODO(@memes) - update this placeholder
-name = "repo-template"
+name = "lab-vault"
 version = "0.0.1"
 description = "Test harness for Terraform/Tofu module"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 # spell-checker: disable
-dependencies = []
+dependencies = [
+    "ansible>=14.4.0",
+]
 
 [dependency-groups]
 dev = [
@@ -18,7 +19,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 ignore = []

@@ -1,11 +1,14 @@
 {
-    "name": "memes-repo-template",
-    "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+    "name": "memes-lab-vault",
+    "image": "mcr.microsoft.com/devcontainers/python:3.14-trixie",
     "features": {
         "ghcr.io/devcontainers-extra/features/direnv:1": {},
         "ghcr.io/devcontainers-extra/features/opentofu:1": {},
         "ghcr.io/devcontainers-extra/features/terraform-docs:1": {},
         "ghcr.io/memes/devcontainers-features/google-cloud-cli:1": {},
+        "ghcr.io/memes/devcontainers-features/hashicorp:1": {
+            "vault": "latest"
+        },
         "ghcr.io/memes/devcontainers-features/talisman:1": {},
         "ghcr.io/memes/devcontainers-features/tflint:1": {}
     },
@@ -17,7 +20,7 @@
                 "ms-python.vscode-python-envs",
                 "redhat.vscode-yaml",
                 "streetsidesoftware.code-spell-checker",
-                "tamasfe.event-better-toml",
+                "tamasfe.even-better-toml",
                 "opentofu.vscode-opentofu",
                 "esbenp.prettier-vscode",
                 "DavidAnson.vscode-markdownlint",
@@ -27,20 +30,26 @@
             ]
         }
     },
+    "capAdd": [
+        "IPC_LOCK"
+    ],
     "containerUser": "vscode",
     "containerEnv": {
+        // Work around macos/docker/virtiofs issues
+        "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv",
         "UV_LINK_MODE": "copy"
     },
     "updateRemoteUserUID": true,
     "mounts": [
-        "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     ],
     "onCreateCommand": {
-        "install-deps": "sudo sh -c 'apt update && apt install -y --no-install-recommends fzf shellcheck && rm -rf /var/lib/apt/lists/*'",
+        "install-deps": "sudo sh -c 'apt update && apt install -y --no-install-recommends fzf golang-cfssl shellcheck && rm -rf /var/lib/apt/lists/*'",
         "install-uv": ["/usr/local/py-utils/bin/pipx", "install", "uv"],
         "modify-default-omz-plugins": ["/usr/bin/sed", "-i.onCreateCommand" , "-e", "/^plugins=/c\\plugins=(git dotenv)", "/home/vscode/.zshrc"]
     },
-    "postCreateCommand": {
-        "uv-sync": "uv sync --link-mode=copy --all-extras --all-packages && uv run pre-commit install --hook-type commit-msg --hook-type pre-commit"
+    "updateContentCommand": {
+        "uv-sync": "uv sync --all-extras --all-packages && uv run pre-commit install --hook-type commit-msg --hook-type pre-commit"
     }
 }

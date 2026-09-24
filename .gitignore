@@ -13,6 +13,7 @@ terraform.tfstate*
 terraform.tfvars*
 !terraform.tfvars.example
 .terragrunt.cache
+terraform.config
 
 # Ignore local venv and ephemeral python resources
 .venv
@@ -20,3 +21,20 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .coverage*
+
+# Ignore all json files; these *may* contain a vault credential if a process errors out
+*.json
+
+# Ignore root CA files
+ca/*
+!ca/ca-config.json
+!ca/ca-csr.json
+
+# Ignore generated certificates and supporting files
+certs/*
+!certs/Makefile
+
+# Ignore VS Code files, except settings and spelling
+.vscode/*
+!.vscode/settings.json
+!.vscode/cSpell.json

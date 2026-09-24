@@ -1,0 +1,13 @@
+# Update certificates
+# code: language=ansible
+---
+- name: Update shared services and files
+  hosts: shared
+  become: true
+  roles:
+    - shared
+- name: Update Vault service
+  hosts: vault
+  become: true
+  roles:
+    - vault

@@ -1,0 +1,15 @@
+# Lab hosts
+---
+all:
+  hosts:
+    vault.lab.acceleratedgcp.com:
+    shared.lab.acceleratedgcp.com:
+  children:
+    vault:
+      hosts:
+        vault.lab.acceleratedgcp.com:
+    shared:
+      hosts:
+        shared.lab.acceleratedgcp.com:
+  vars:
+    ansible_user: memes

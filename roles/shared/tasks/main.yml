@@ -1,0 +1,91 @@
+# Update shared server TLS certificates
+---
+- name: Install required packages
+  ansible.builtin.package:
+    name:
+      - nginx
+    state: present
+  tags:
+    - init
+- name: Update CA cert
+  ansible.builtin.copy:
+    src: "{{ shared_ca_cert_pem }}"
+    dest: "{{ item }}/acceleratedgcp-root-ca.crt"
+    force: true
+    owner: root
+    group: root
+    mode: '0644'
+    directory_mode: '0755'
+  loop:
+    - /usr/local/share/ca-certificates
+  notify:
+    - Update CA Certs
+  tags:
+    - http
+- name: Update HTTPS TLS cert
+  ansible.builtin.copy:
+    src: "{{ shared_tls_cert_pem }}"
+    dest: /etc/ssl/certs/
+    force: true
+    owner: root
+    group: root
+    mode: '0644'
+    directory_mode: '0755'
+  notify:
+    - Restart NGINX
+  tags:
+    - http
+- name: Update HTTPS TLS key
+  ansible.builtin.copy:
+    src: "{{ shared_tls_key_pem }}"
+    dest: /etc/ssl/private/
+    force: true
+    owner: root
+    group: root
+    mode: '0600'
+    directory_mode: '0755'
+  notify:
+    - Restart NGINX
+  tags:
+    - http
+- name: Configure NGINX for shared
+  ansible.builtin.template:
+    src: templates/nginx/shared.j2
+    dest: /etc/nginx/sites-available/shared
+    force: true
+    owner: root
+    group: root
+    mode: '0644'
+    directory_mode: '0755'
+  notify:
+    - Restart NGINX
+  tags:
+    - http
+- name: Enable shared NGINX site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/shared
+    dest: /etc/nginx/sites-enabled/shared
+    owner: root
+    group: root
+    state: link
+  notify:
+    - Restart NGINX
+- name: Disable default NGINX site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify:
+    - Restart NGINX
+  tags:
+    - http
+- name: Copy CA file
+  ansible.builtin.copy:
+    src: "{{ shared_ca_cert_pem }}"
+    dest: /srv/shared/certs/
+    force: true
+    owner: root
+    group: shared
+    mode: '0664'
+    directory_mode: '0755'
+  tags:
+    - http
