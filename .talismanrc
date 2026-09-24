@@ -34,3 +34,5 @@ fileignoreconfig:
   checksum: fb8ca27b5c6ddb7dd90121340186566e5fb507acd6ec9050e681777671a864f0
 - filename: foundations/main.tf
   checksum: 4caf1332baa88bd9f334afe5c604ab9e56878e53111bfe6fa28bb803f0967495
+- filename: certs/Makefile
+  checksum: 5185552d161f71d703be2534c967bdab1a7c39d6550b6658b50e7f2eb583fa84
