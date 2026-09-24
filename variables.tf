@@ -51,6 +51,6 @@ variable "gsuite_admin_group" {
 }
 
 variable "bound_cidrs" {
-  type        = list(string)
-  description = "A list of CIDRs that will be permitted to access tokens and secrets."
+  type        = set(string)
+  description = "A set of CIDRs that will be permitted to access tokens and secrets."
 }
