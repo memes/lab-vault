@@ -11,7 +11,7 @@ terraform {
       # and updates.
       # See https://registry.terraform.io/providers/hashicorp/vault/latest/docs#provider-arguments
       source  = "hashicorp/vault"
-      version = "~> 3.10"
+      version = "~> 5.12"
     }
   }
   backend "gcs" {}
