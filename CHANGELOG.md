@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/memes/lab-vault/compare/v0.1.0...v0.1.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* Update foundations providers, style ([b93607c](https://github.com/memes/lab-vault/commit/b93607c448fae278a6456b8f065231c109fec076))
+
 ## [0.1.0](https://github.com/memes/lab-vault/compare/v0.0.1...v0.1.0) (2026-09-24)
 
 
