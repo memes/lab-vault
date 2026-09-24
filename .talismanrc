@@ -25,7 +25,7 @@ fileignoreconfig:
 - filename: kickstart-secrets.tf
   checksum: d72053c7bc6dfffcb4c829509e360443061168224db7c645f33acabb156aa59c
 - filename: foundations/README.md
-  checksum: 659c6bf1f85d25d2f8db605123cc4f53d78b2845f975d7125ed267c6c48457d3
+  checksum: 6577cb8429fe407f01edcd983d683b48397d1578216f4695c5772092c1f1b320
 - filename: ipmi-secrets.tf
   checksum: b3dc324a5b2b892d5dcac2fe883a29064abcafdf2308c72cf4a11b135df84129
 - filename: foundations/outputs.tf

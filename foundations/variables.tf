@@ -21,7 +21,7 @@ variable "terraform_sa_impersonators" {
 }
 
 variable "tf_sa_roles" {
-  type        = list(string)
+  type        = set(string)
   description = "A list of IAM roles to assign to the Terraform service account."
   default = [
     "roles/compute.admin",
@@ -35,8 +35,8 @@ variable "tf_sa_roles" {
 }
 
 variable "apis" {
-  type        = list(string)
-  description = "A list of APIs to enable for the project."
+  type        = set(string)
+  description = "A set of APIs to enable for the project."
   default = [
     "cloudapis.googleapis.com",
     "compute.googleapis.com",
