@@ -1,0 +1,20 @@
+# Variables that are common to all groups and hosts
+---
+# Default vlan settings
+default_domain: home.arpa
+default_shared_host: "shared.{{ default_domain }}"
+default_shared_http_url: "http://{{ default_shared_host }}"
+default_shared_https_url: "https://{{ default_shared_host }}"
+
+# Lab domain settings for management (untagged) and internal (vlan96)
+root_ca: ./ca/acceleratedgcp-root-ca.pem
+lab_domain: lab.acceleratedgcp.com
+lab_shared_host: "shared.{{ lab_domain }}"
+lab_shared_http_url: "http://{{ lab_shared_host }}"
+lab_shared_https_url: "https://{{ lab_shared_host }}"
+
+# Hashicorp Vault settings
+vault_host: "vault.{{ lab_domain }}"
+vault_url: "https://{{ vault_host }}:8200"
+vault_ipmi_secrets_path: lab/ipmi
+vault_kickstart_secrets_path: lab/kickstart

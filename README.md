@@ -124,8 +124,11 @@ Unseal token (leave empty when done):
 
    1. Rotate the Vault certificate and restart service
 
+      > NOTE: If executing in devcontainer and the GPG/SSH agent isn't forwarding correctly, add `-k` flag to prompt for
+      > SSH password.
+
       ```shell
-      ansible-playbook -Ki ../inventory playbook.yaml
+      uv run ansible-playbook -Ki ./inventory playbook.yaml
       ```
 
    1. Launch a new shell or reset VAULT_ADDR environment to use TLS

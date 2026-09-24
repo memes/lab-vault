@@ -36,3 +36,15 @@ fileignoreconfig:
   checksum: 4caf1332baa88bd9f334afe5c604ab9e56878e53111bfe6fa28bb803f0967495
 - filename: certs/Makefile
   checksum: 5185552d161f71d703be2534c967bdab1a7c39d6550b6658b50e7f2eb583fa84
+- filename: roles/vault/templates/vault.env.j2
+  checksum: a4b1be370099ddf5b301ae7ab4c8663ce9240a69a8142e3e7456cc36060de60b
+- filename: inventory/group_vars/all.yaml
+  checksum: edc5a042595b8193e98f65f0783d36e3be381ebb77e4e6fa9773ca64bb83ad60
+- filename: roles/vault/templates/vault.hcl.j2
+  checksum: 0c0ada75b1f05d37147722dcba5c49415dd46c11c71ac8bd4859cddafba8d34e
+- filename: roles/shared/vars/main.yml
+  checksum: a9f88f0628c7c68c1808abd65443daf57dfa41dc88f85c1aab86d2a61649a84a
+- filename: roles/vault/defaults/main.yml
+  checksum: c7d3e5475ec20225a16b17b0f3f01bd3e64f5b27161c6f3decce42bf5cda8020
+- filename: roles/vault/tasks/main.yml
+  checksum: ab018191a4010bf7bf101a4c28ecc771993a32cd5d81cf8fd5deb54da2f41a1b
