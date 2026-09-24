@@ -3,11 +3,15 @@
 # tools.
 
 terraform {
-  required_version = "~> 1.3"
+  required_version = ">= 1.5"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.41"
+      version = ">= 8.4"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.9"
     }
   }
   # Once the Terraform state bucket has been created, uncomment these lines and
@@ -28,6 +32,18 @@ resource "google_project" "lab-config" {
   auto_create_network = false
 }
 
+# Enable GCP APIs
+resource "google_project_service" "apis" {
+  for_each                   = var.apis
+  project                    = google_project.lab-config.project_id
+  service                    = each.value
+  disable_dependent_services = true
+
+  depends_on = [
+    google_project.lab-config,
+  ]
+}
+
 # Create a service account to be used by Terraform
 resource "google_service_account" "terraform" {
   account_id   = "terraform"
@@ -41,6 +57,10 @@ resource "google_service_account_iam_binding" "impersonate" {
   service_account_id = google_service_account.terraform.name
   role               = "roles/iam.serviceAccountTokenCreator"
   members            = var.terraform_sa_impersonators
+
+  depends_on = [
+    google_project_service.apis,
+  ]
 }
 
 # Create a bucket for Terraform state
@@ -51,30 +71,34 @@ resource "google_storage_bucket" "tf-state" {
   versioning {
     enabled = true
   }
+
+  depends_on = [
+    google_project_service.apis,
+  ]
 }
 
 # Grant the Terraform service account full control of the bucket
 resource "google_storage_bucket_iam_member" "tf-admin" {
   bucket = google_storage_bucket.tf-state.name
   role   = "roles/storage.admin"
-  member = "serviceAccount:${google_service_account.terraform.email}"
-}
+  member = google_service_account.terraform.member
 
-# Enable GCP APIs
-resource "google_project_service" "apis" {
-  count                      = length(var.apis)
-  project                    = google_project.lab-config.project_id
-  service                    = element(var.apis, count.index)
-  disable_dependent_services = true
+  depends_on = [
+    google_project_service.apis,
+    google_storage_bucket.tf-state,
+  ]
 }
 
 # Assign IAM project roles to the Terraform service account
 resource "google_project_iam_member" "sa-roles" {
-  count      = length(var.tf_sa_roles)
-  project    = google_project.lab-config.project_id
-  role       = element(var.tf_sa_roles, count.index)
-  member     = "serviceAccount:${google_service_account.terraform.email}"
-  depends_on = [google_project_service.apis]
+  for_each = var.tf_sa_roles
+  project  = google_project.lab-config.project_id
+  role     = each.value
+  member   = google_service_account.terraform.member
+
+  depends_on = [
+    google_project_service.apis,
+  ]
 }
 
 # Create a service account that Vault can use
@@ -82,6 +106,10 @@ resource "google_service_account" "vault" {
   project      = google_project.lab-config.project_id
   account_id   = "vault-sa"
   display_name = "Hashicorp Vault service account"
+
+  depends_on = [
+    google_project_service.apis,
+  ]
 }
 
 # Generate a service account key to use with Vault
@@ -93,8 +121,7 @@ resource "google_service_account_key" "vault" {
 }
 
 # Generate a random name for the bucket - it'll only ever be used by a Vault
-# instance
-# tflint-ignore: terraform_required_providers # TODO(@memes): Add provider
+# instance.
 resource "random_id" "vault_bucket_name" {
   byte_length = 8
 }
@@ -115,14 +142,14 @@ data "google_iam_policy" "vault-gcs" {
     role = "roles/storage.admin"
     members = [
       "group:lab-admins@matthewemes.com",
-      "serviceAccount:${google_service_account.terraform.email}",
+      google_service_account.terraform.member,
     ]
   }
 
   binding {
     role = "roles/storage.objectAdmin"
     members = [
-      "serviceAccount:${google_service_account.vault.email}",
+      google_service_account.vault.member,
     ]
   }
 }
@@ -137,7 +164,7 @@ resource "google_storage_bucket_iam_policy" "vault-gcs" {
 resource "google_project_iam_member" "vault-sa-key-admin" {
   project = google_project.lab-config.project_id
   role    = "roles/iam.serviceAccountKeyAdmin"
-  member  = "serviceAccount:${google_service_account.vault.email}"
+  member  = google_service_account.vault.member
 }
 
 # Create a service account for OPNsense backups; roles are manually handled in

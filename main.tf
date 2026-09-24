@@ -1,17 +1,17 @@
 # Configure Hashicorp Vault for use in lab
 terraform {
-  required_version = "~> 1.3"
+  required_version = ">= 1.5"
   required_providers {
     local = {
       source  = "hashicorp/local"
-      version = "~> 2.4"
+      version = ">= 2.9"
     }
     vault = {
       # Provider is configured through environment vars to facilitate bootstrapping
       # and updates.
       # See https://registry.terraform.io/providers/hashicorp/vault/latest/docs#provider-arguments
       source  = "hashicorp/vault"
-      version = "~> 3.10"
+      version = ">= 5.12"
     }
   }
   backend "gcs" {}
@@ -38,7 +38,7 @@ resource "vault_auth_backend" "approle" {
 resource "vault_mount" "pki_ca" {
   path = "pki_ca"
   type = "pki"
-  # CA should allow upto 10 years, with a default of 1 year
+  # CA should allow up to 10 years, with a default of 1 year
   default_lease_ttl_seconds = 31536000
   max_lease_ttl_seconds     = 315360000
 }
