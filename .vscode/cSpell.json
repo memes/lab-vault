@@ -4,7 +4,9 @@
     "language": "en",
     "words": [
         "acceleratedgcp",
+        "boto",
         "certfile",
+        "creds",
         "dhparams",
         "direnv",
         "DOCKERHUB",
@@ -26,6 +28,7 @@
         "opencontainers",
         "pastebin",
         "pubout",
+        "rolename",
         "tflint",
         "thumbsup",
         "trimpath",

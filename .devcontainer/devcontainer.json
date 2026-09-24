@@ -41,7 +41,8 @@
     },
     "updateRemoteUserUID": true,
     "mounts": [
-        "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
     ],
     "onCreateCommand": {
         "install-deps": "sudo sh -c 'apt update && apt install -y --no-install-recommends fzf golang-cfssl shellcheck && rm -rf /var/lib/apt/lists/*'",
